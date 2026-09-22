@@ -488,6 +488,8 @@ def verify_complaint_endpoint(
 
     Raises:
         HTTPException: 404 if complaint not found, 400 on validation error.
+        InvalidStateTransition: 409 if the complaint is not pending
+            verification.
     """
     complaint = _load_complaint(db, complaint_id)
 

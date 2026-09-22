@@ -42,8 +42,7 @@ class SightingEvent(BaseModel):
     plate: str = Field(
         ...,
         max_length=MAX_PLATE_LENGTH,
-        pattern=_PLATE_REGEX,
-        description="Licence plate number",
+        description="Raw OCR licence plate string (normalised server-side)",
     )
     lat: float = Field(
         ...,

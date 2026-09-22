@@ -504,6 +504,43 @@ async def test_reject_complaint_without_reason_returns_400(
 
 
 @pytest.mark.asyncio
+async def test_reverify_verified_complaint_returns_409(
+    client: AsyncClient,
+    citizen_headers: dict[str, str],
+    cop_headers: dict[str, str],
+) -> None:
+    """Verifying a complaint that was already verified returns 409.
+
+    Args:
+        client: Async HTTP test client.
+        citizen_headers: Auth headers for a CITIZEN user.
+        cop_headers: Auth headers for a COP user.
+
+    Returns:
+        None.
+
+    Raises:
+        AssertionError: If re-verification does not return 409.
+    """
+    complaint_body = await _create_complaint_via_api(client, citizen_headers, "MH12AB1234")
+    complaint_id = complaint_body["id"]
+
+    first = await client.post(
+        f"/api/v1/complaints/{complaint_id}/verify",
+        json={"decision": "approve"},
+        headers=cop_headers,
+    )
+    assert first.status_code == 200
+
+    second = await client.post(
+        f"/api/v1/complaints/{complaint_id}/verify",
+        json={"decision": "approve"},
+        headers=cop_headers,
+    )
+    assert second.status_code == 409
+
+
+@pytest.mark.asyncio
 async def test_verify_complaint_citizen_forbidden(
     client: AsyncClient,
     citizen_headers: dict[str, str],

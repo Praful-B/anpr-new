@@ -402,3 +402,116 @@ async def test_analytics_requires_cop_role(
         headers=citizen_headers,
     )
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_analytics_recovery_metrics_weekly_series(
+    client: AsyncClient,
+    cop_headers: dict[str, str],
+    db_session: Session,
+) -> None:
+    """GET /analytics/recovery-metrics reports recovered and expired counts.
+
+    A CLOSED entry with ``recovered_at`` and an EXPIRED entry both land in
+    the current ISO week with ``hotlist_added`` >= 2 and ``recovery_rate``.
+
+    Args:
+        client: Async HTTP test client.
+        cop_headers: Auth headers for COP user.
+        db_session: Test database session.
+
+    Returns:
+        None.
+
+    Raises:
+        AssertionError: If the weekly series is missing or miscounted.
+    """
+    now = datetime.now(timezone.utc)
+    monday = (now - timedelta(days=now.weekday())).date().isoformat()
+
+    recovered_complaint = _create_complaint(db_session, "MH12AB1234")
+    recovered = Hotlist(
+        id=uuid.uuid4(),
+        plate="MH12AB1234",
+        complaint_id=recovered_complaint.id,
+        status=HotlistStatus.CLOSED,
+        recovered_at=now,
+    )
+    expired_complaint = _create_complaint(db_session, "DL01CD5678")
+    expired = Hotlist(
+        id=uuid.uuid4(),
+        plate="DL01CD5678",
+        complaint_id=expired_complaint.id,
+        status=HotlistStatus.EXPIRED,
+        updated_at=now,
+    )
+    db_session.add_all([recovered, expired])
+    db_session.commit()
+
+    response = await client.get(
+        "/api/v1/analytics/recovery-metrics",
+        headers=cop_headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert isinstance(body, list)
+    assert body
+
+    current_week = next(row for row in body if row["week_start"] == monday)
+    assert current_week["hotlist_added"] >= 2
+    assert current_week["recovered"] >= 1
+    assert current_week["expired"] >= 1
+    assert current_week["recovery_rate"] >= 0.0
+
+
+@pytest.mark.asyncio
+async def test_analytics_heatmap_respects_from_bound(
+    client: AsyncClient,
+    cop_headers: dict[str, str],
+    db_session: Session,
+) -> None:
+    """The ``from`` alias bounds the heatmap window.
+
+    An old sighting (45d ago) is excluded at the default 30-day lookback and
+    reappears when ``from`` is widened to 60 days.
+
+    Args:
+        client: Async HTTP test client.
+        cop_headers: Auth headers for COP user.
+        db_session: Test database session.
+
+    Returns:
+        None.
+
+    Raises:
+        AssertionError: If the window bounds are not respected.
+    """
+    now = datetime.now(timezone.utc)
+
+    _create_hotlist_with_sighting(db_session, "KA01EF9012", 10.0, 11.0, now)
+    _create_hotlist_with_sighting(
+        db_session, "GJ01XX0001", 20.0, 21.0, now - timedelta(days=45)
+    )
+
+    narrow = await client.get(
+        "/api/v1/analytics/heatmap",
+        params={"from": (now - timedelta(days=30)).isoformat()},
+        headers=cop_headers,
+    )
+    assert narrow.status_code == 200
+    narrow_keys = {
+        f"{b['lat']},{b['lng']}" for b in narrow.json()
+    }
+    assert "10.0,11.0" in narrow_keys
+    assert "20.0,21.0" not in narrow_keys
+
+    wide = await client.get(
+        "/api/v1/analytics/heatmap",
+        params={"from": (now - timedelta(days=60)).isoformat()},
+        headers=cop_headers,
+    )
+    assert wide.status_code == 200
+    wide_keys = {f"{b['lat']},{b['lng']}" for b in wide.json()}
+    assert "10.0,11.0" in wide_keys
+    assert "20.0,21.0" in wide_keys

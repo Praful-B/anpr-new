@@ -10,17 +10,18 @@ import uuid
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Cookie, Depends, Response, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Body, Cookie, Depends, Response, status
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.deps import get_db
-from app.exceptions import AppError, error_response
+from app.exceptions import AppError
 from app.models.user import Role, User
 from app.schemas.auth import (
     LoginRequest,
     RegisterRequest,
+    TokenResponse,
     UserResponse,
 )
 from app.security import (
@@ -54,11 +55,11 @@ class RegisterResponse(BaseModel):
 
     Attributes:
         user: The newly created user.
-        access_token: Short-lived JWT access token.
+        tokens: Access and refresh JWTs for the new account.
     """
 
     user: UserResponse
-    access_token: str
+    tokens: TokenResponse
 
 
 class LoginResponse(BaseModel):
@@ -67,10 +68,31 @@ class LoginResponse(BaseModel):
     Attributes:
         user: The authenticated user.
         access_token: Short-lived JWT access token.
+        refresh_token: Long-lived JWT refresh token (also set as an
+            HttpOnly cookie for browsers).
+        token_type: Always ``bearer``.
     """
 
     user: UserResponse
     access_token: str
+    refresh_token: str
+    token_type: str = Field(default="bearer", description="Token type")
+
+
+class RefreshRequest(BaseModel):
+    """Request body for token rotation.
+
+    The token is accepted in the body (the shape both frontends and the
+    mobile client post) or, for browser clients relying on the HttpOnly
+    cookie, in the cookie itself; the body takes precedence.
+
+    Attributes:
+        refresh_token: The refresh JWT to rotate.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    refresh_token: str = Field(..., description="Refresh token to rotate")
 
 
 class RefreshResponse(BaseModel):
@@ -78,9 +100,11 @@ class RefreshResponse(BaseModel):
 
     Attributes:
         access_token: Fresh short-lived JWT access token.
+        refresh_token: Fresh long-lived JWT refresh token.
     """
 
     access_token: str
+    refresh_token: str
 
 
 # ---------------------------------------------------------------------------
@@ -160,8 +184,9 @@ def register(
         db: Database session.
 
     Returns:
-        RegisterResponse: User info and access token.
-            The refresh token is also set as an HttpOnly cookie.
+        RegisterResponse: User info and a ``tokens`` object with the
+            access and refresh JWTs. The refresh token is also set as an
+            HttpOnly cookie.
 
     Raises:
         AppError: 409 if the email is already registered.
@@ -187,7 +212,11 @@ def register(
 
     return RegisterResponse(
         user=_user_to_response(user),
-        access_token=access_token,
+        tokens=TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+        ),
     )
 
 
@@ -212,7 +241,8 @@ def login(
         db: Database session.
 
     Returns:
-        LoginResponse: User info and access token.
+        LoginResponse: User info and the access/refresh JWTs at the top
+            level. The refresh token is also set as an HttpOnly cookie.
 
     Raises:
         AppError: 401 if credentials are invalid (same error for wrong
@@ -235,6 +265,8 @@ def login(
     return LoginResponse(
         user=_user_to_response(user),
         access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
     )
 
 
@@ -245,59 +277,51 @@ def login(
 def refresh(
     response: Response,
     db: Annotated[Session, Depends(get_db)],
+    payload: Annotated[RefreshRequest | None, Body()] = None,
     rakshak_refresh: str | None = Cookie(default=None, alias=REFRESH_COOKIE_NAME),
 ) -> RefreshResponse:
-    """Rotate a refresh token and return a new access token.
+    """Rotate a refresh token and return new access and refresh tokens.
 
-    Accepts the refresh token from the HttpOnly cookie only.
-    A new refresh token cookie is set on the response.
+    Accepts the refresh token from the JSON body (the shape posted by the
+    dashboard, mobile client, and device simulator) or, as a fallback,
+    from the HttpOnly cookie. A new refresh token is returned in the body
+    and set as a fresh cookie on the response.
 
     Args:
         response: FastAPI Response to set the new cookie on.
         db: Database session.
+        payload: Optional body carrying the refresh token.
         rakshak_refresh: Refresh token from the HttpOnly cookie.
 
     Returns:
-        RefreshResponse: Fresh access token.
+        RefreshResponse: Fresh access and refresh tokens.
 
     Raises:
         AppError: 401 if the refresh token is invalid or expired.
     """
-    if not rakshak_refresh:
-        raise AppError(
-            code="INVALID_REFRESH",
-            message="Missing refresh token",
-            status_code=401,
-        )
+    token = (payload.refresh_token if payload else None) or rakshak_refresh
+    if not token:
+        raise AppError(code="INVALID_REFRESH", message="Missing refresh token", status_code=401)
 
-    claims = decode_token(rakshak_refresh, expected_type="refresh")
+    claims = decode_token(token, expected_type="refresh")
     if claims is None:
-        raise AppError(
-            code="INVALID_REFRESH",
-            message="Invalid or expired refresh token",
-            status_code=401,
-        )
+        raise AppError(code="INVALID_REFRESH", message="Invalid or expired refresh token", status_code=401)
 
     try:
         user_id = uuid.UUID(claims["sub"])
     except (KeyError, ValueError):
-        raise AppError(
-            code="INVALID_REFRESH",
-            message="Invalid token subject",
-            status_code=401,
-        )
+        raise AppError(code="INVALID_REFRESH", message="Invalid token subject", status_code=401)
 
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
-        raise AppError(
-            code="INVALID_REFRESH",
-            message="User not found",
-            status_code=401,
-        )
+        raise AppError(code="INVALID_REFRESH", message="User not found", status_code=401)
 
     access_token = create_access_token(str(user.id), user.role.value)
     new_refresh_token = create_refresh_token(str(user.id))
     _set_refresh_cookie(response, new_refresh_token)
 
     logger.info("token_refresh", user_id=str(user.id))
-    return RefreshResponse(access_token=access_token)
+    return RefreshResponse(
+        access_token=access_token,
+        refresh_token=new_refresh_token,
+    )

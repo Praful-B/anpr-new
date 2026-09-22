@@ -352,3 +352,81 @@ async def test_unmatched_plate_stays_absent_after_a_match(
     ).first()
     assert stored_hotlist is not None
     assert stored_hotlist.plate == HOTLISTED_PLATE
+
+
+@pytest.mark.asyncio
+async def test_empty_plate_event_returns_200_drop_not_500(
+    client: AsyncClient,
+    db_session: Session,
+) -> None:
+    """A malicious client sending an empty plate gets a graceful 200 drop.
+
+    An empty plate string passes schema validation but cannot be normalised;
+    it must be dropped as ``plate_not_hotlisted`` rather than surfacing a 500.
+
+    Args:
+        client: Async HTTP test client.
+        db_session: Test database session.
+
+    Raises:
+        AssertionError: If the empty-plate event 500s or leaks.
+    """
+    _create_device(db_session)
+    _create_hotlist_entry(db_session)
+
+    bad_event = _event("")
+    bad_event["plate"] = ""
+
+    response = await client.post(
+        "/api/v1/sightings/",
+        json={"events": [bad_event]},
+        headers={"X-Device-Token": DEVICE_TOKEN},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["accepted"] == 0
+    assert body["dropped"] == 1
+    assert body["reasons"] == [{"index": 0, "reason": "plate_not_hotlisted"}]
+    assert db_session.query(Sighting).count() == 0
+
+
+@pytest.mark.asyncio
+async def test_mixed_batch_isolates_unmatched_plate(
+    client: AsyncClient,
+    db_session: Session,
+) -> None:
+    """A batch mixing hotlisted and non-hotlisted events is processed per-event.
+
+    The unmatched event must drop with a reason code only; the matched event is
+    stored; the unmatched plate must never appear in the response.
+
+    Args:
+        client: Async HTTP test client.
+        db_session: Test database session.
+
+    Raises:
+        AssertionError: If the mixed batch leaks or mis-processes events.
+    """
+    _create_device(db_session)
+    _create_hotlist_entry(db_session)
+
+    response = await client.post(
+        "/api/v1/sightings/",
+        json={"events": [_event(UNMATCHED_PLATE), _event(HOTLISTED_PLATE)]},
+        headers={"X-Device-Token": DEVICE_TOKEN},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["accepted"] == 1
+    assert body["dropped"] == 1
+    assert body["reasons"] == [{"index": 0, "reason": "plate_not_hotlisted"}]
+    assert UNMATCHED_PLATE not in response.text
+
+    rows = db_session.query(Sighting).all()
+    assert len(rows) == 1
+    stored_hotlist = db_session.query(Hotlist).filter(
+        Hotlist.id == rows[0].hotlist_id
+    ).first()
+    assert stored_hotlist.plate == HOTLISTED_PLATE

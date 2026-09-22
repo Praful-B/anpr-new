@@ -133,17 +133,27 @@ The seed script at `scripts/seed_db.py` resolves its `sys.path` relative to the 
 
 The seed script creates accounts with passwords like `Admin@123`, `Cop@12345`. These are intentionally simple for demo purposes. Production deployments must enforce strong password policies.
 
-### 31. Development master key is committed *(added in Step 12)*
+### 31. ~~Development master key is committed~~ *(RESOLVED in the re-verification pass)*
 
-`.env.example` ships a fixed 32-byte `MASTER_KEY_B64` so `cp .env.example .env && make up && make seed` works end to end without extra steps. It is a development-only key that anyone with the repository can read. Replace it (and `JWT_SECRET`) before any real deployment: a leaked master key allows deriving every device's hotlist key.
+`.env.example` used to ship a fixed 32-byte `MASTER_KEY_B64` so
+`cp .env.example .env && make up && make seed` worked end to end without extra
+steps. It was a development-only key that anyone with the repository could
+read.
+
+**Resolved:** both key values in `.env.example` were replaced with
+`REPLACE_ME_...` placeholders, and the comment advertising the committed key was
+corrected. The value that *was* committed is still recoverable from history —
+see #50.
 
 ---
 
 ## Frontend (dashboard)
 
-### 28. Sighting photos are stored but never rendered *(added in Step 12)*
+### 28. ~~Sighting photos are stored but never rendered~~ *(RESOLVED in Phase 7)*
 
 The backend stores each hit photo through `StorageBackend` and serves it from the local mount at `/sightings/<file>` (proxied by nginx and the Vite dev server). No dashboard component renders that image yet: the vehicle detail page shows location, timestamp, and confidence, but not the photo thumbnail. The API field `photo_url` is therefore present and resolvable but unused by the UI.
+
+**RESOLVED (Phase 7, Step 8, 2026-09-22):** the hotlist detail payload now includes `photo_url` per sighting (`api/hotlist.py::_recent_sightings`), and `PoliceVehicleDetail.tsx` renders a lazy-loaded thumbnail that opens the full image in a new tab. The WS `new_sighting` payload already carried `photo_url`, so live updates show the thumbnail too.
 
 ### 29. Relative API base requires the proxy *(added in Step 12)*
 
@@ -157,9 +167,11 @@ The dashboard has no service worker or offline caching. Loss of network connecti
 
 All UI text is in English. Hindi and regional language support is deferred.
 
-### 24. Admin page is implemented but unpaginated in the UI *(revised)*
+### 24. ~~Admin page is implemented but unpaginated in the UI~~ *(RESOLVED in Phase 7)*
 
 The `/admin` route now renders `AdminPanel.tsx`, which lists users with a role filter, changes a user's role, and shows the audit log. The UI fetches only the first page (20 rows) of each list and has no next/previous controls; the API itself is fully paginated. Deep paging is deferred.
+
+**RESOLVED (Phase 7, Step 8, 2026-09-22):** the users and audit tables now have prev/next buttons plus a "Page N of M (total)" indicator, and the role filter resets to page 1. The API surface was unchanged — this was purely a client-side gap.
 
 ---
 
@@ -207,31 +219,35 @@ Three modules were added or split beyond the §7 list because the app could not 
 
 ### 40. Hit delivery status is per-batch, not per-event
 
-The backend accepts a batch and returns aggregate `{accepted, dropped, reasons}`. The mobile app sends one event per request so the reported status is unambiguous, but a future batched sender would have to reconcile per-event outcomes from the `reasons` list.
+The backend accepts a batch and returns aggregate `{accepted, dropped, reasons}`. The mobile app sends one event per request so the reported status is unambiguous. Phase 8 updated the client to reconcile the `reasons: [{index, reason}]` shape (it previously read the field as `string[]`, which would have mislabelled a throttled hit as ``rejected``): `services/queue.ts` now routes every response through the pure `classifyDelivery(accepted, reasons)` helper, covered by 4 Jest tests. A future batched sender can feed the same helper per-event.
 
 ---
 
 ## Spec audit gaps (Phase 0 — added in this revision)
 
-### 41. Error response shape is non-compliant
+### 41. ~~Error response shape is non-compliant~~ *(RESOLVED — entry was stale)*
 
-All endpoints return FastAPI's default `{"detail": "..."}` error format. The spec requires `{"error": {"code": "SOME_MACHINE_CODE", "message": "...", "field": null}}`. No custom exception handler exists in `main.py`. This is a cross-cutting fix that affects every error path.
+*(RESOLVED 2026-09-22 — Phase 1 (Step 2), re-verified in the Phase 10 final pass.)* Two claims in this entry are false: PROJECT_INFO does **not** require the `{"error": {"code", "message", "field"}}` shape (no such requirement exists anywhere in the spec — see the "Interface truth" block in `docs/GAP_ANALYSIS.md`), and `main.py` **does** register exception handlers (`AppError`, `InvalidStateTransition`, catch-all) since Phase 1. The adopted contract — what every consumer (tests, dashboard `lib/api.ts`, mobile `services/api.ts`) expects — is FastAPI's default `{"detail": "<string>"}`; machine error codes are logged, never returned. Verified by `test_auth.py` and the 409/403 suites.
 
 ### 42. Thin handler rule violated across 6 API files
 
 The spec requires route handlers to be thin (validate, call service, return). 14 occurrences of `db.add()` / `db.commit()` were found inside `api/` files: `auth.py`, `complaints.py`, `devices.py`, `hotlist.py`, `admin.py`, `sightings.py`. Business logic must be extracted to `services/` functions.
 
-### 43. MASTER_KEY_B64 has no startup validation
+### 43. ~~MASTER_KEY_B64 has no startup validation~~ *(RESOLVED — entry was stale)*
 
-`config.py` accepts any string for `MASTER_KEY_B64` including empty strings. The spec requires a validator that base64-decodes and checks `len == 32`, failing fast at startup. Currently the app boots fine with a truncated key and would fail at first crypto operation.
+This entry claimed `config.py` accepted any string for `MASTER_KEY_B64`,
+including empty. That is **no longer true**: `Settings._validate_master_key` is a
+`model_validator(mode="after")` that rejects an empty value, rejects
+non-base64, and rejects anything that does not decode to exactly 32 bytes.
+Re-verified 2026-09-22; see `docs/VERIFICATION_LOG.md`.
 
-### 44. AuditLog.actor_id is NOT NULL (should be nullable)
+### 44. ~~AuditLog.actor_id is NOT NULL (should be nullable)~~ *(RESOLVED — entry was stale)*
 
-The `audit_logs` table has `actor_id` as NOT NULL FK to users. The spec requires it to be nullable for system actions (e.g., FIR expiry scheduler writes audit log with `actor_id=NULL`). This blocks the scheduler's audit logging requirement.
+*(RESOLVED 2026-09-22, re-verified in the Phase 10 final pass.)* The model already declares `actor_id: Mapped[uuid.UUID | None] = mapped_column(..., nullable=True)` in `models/audit_log.py`, with a class docstring stating system actions use NULL. The claimed blocker does not exist. Note (not a bug): the scheduler does not currently emit system audit rows — PROJECT_INFO only mandates audit rows for COP/ADMIN writes (`§` "Every COP/ADMIN write → audit_logs row"), which the API layer satisfies.
 
 ### 45. No InvalidStateTransition custom exception
 
-`services/verification.py` raises `ValueError` for illegal state transitions. The spec requires a typed `InvalidStateTransition` exception. No such class exists anywhere in the codebase.
+`services/verification.py` raises `ValueError` for illegal state transitions. The spec requires a typed `InvalidStateTransition` exception. No such class exists anywhere in the codebase. *(RESOLVED 2026-09-22 — Phase 2 (Step 3): `InvalidStateTransition` exists in `app/exceptions.py` and is now raised by `services/verification.py` and `api/hotlist.py`; the `main.py` 409 handler is live.)*
 
 ### 46. Refresh token includes role claim
 
@@ -240,6 +256,97 @@ The `audit_logs` table has `actor_id` as NOT NULL FK to users. The spec requires
 ### 47. decode_token does not enforce type checking
 
 `decode_token()` returns raw decoded payload without checking the `type` claim. The caller in `deps.py` checks `type == "access"`. The spec says `decode_token` should accept an `expected_type` parameter and enforce it. Currently an access token could be used where a refresh token is expected if the caller forgets to check.
+
+### 48. Verification checks 2–5 could not be re-run in the resume environment
+
+During the 2026-09-22 re-verification pass the host had **no container runtime**
+(no Docker Desktop, `podman`, `nerdctl`, or `colima`), no reachable
+Postgres/PostGIS or Redis, and no `pytest`, `fastapi`, `pydantic`,
+`pydantic_settings`, or `structlog` installed. Only check 1 (Static) could be
+executed. The `66 passed` and `128 passed` figures recorded in
+`docs/VERIFICATION_LOG.md` were produced by an earlier environment and were
+**not** reproduced; treat them as unverified until the suite runs somewhere with
+a working stack. Note that the test suite is designed to run on SQLite and needs
+no Docker — reinstalling the backend requirements would be enough to restore
+checks 2 and 5.
+
+### 49. The health endpoint is served on two paths (unresolved contract conflict)
+
+The container healthcheck (`docker-compose.yml`), `make up`, `start_demo.sh`,
+`README.md`, `RUNBOOK.md`, `API.md`, and `tests/test_health.py` all probe
+`/healthz`. `docs/GAP_ANALYSIS.md` asserts the build spec required
+`/api/v1/healthz`; `docs/PROJECT_INFO.md` §14 just says `/healthz`. With only the
+versioned route registered, the documented `make up` flow would never observe a
+healthy backend and `tests/test_health.py` would 404. The handler is therefore
+registered on **both** paths (the unversioned one is hidden from the OpenAPI
+schema). This is a deliberate hedge around a missing specification, not a
+decision: once `AGENT_BUILD_SPEC.md` is restored, drop whichever path it does
+not require.
+
+### 50. Previously committed secrets remain in git history
+
+Commits `634a38f` and `613fc29` still contain the old development
+`MASTER_KEY_B64`/`JWT_SECRET` values from `.env.example` and the plaintext demo
+passwords from `docs/CREDENTIALS.md`. Those files are cleaned up in the working
+tree, but the values themselves were **not** purged from history: doing so needs
+`git filter-repo`/BFG plus a force-push, which was not run unprompted. Anyone
+with a clone can still read them. The master key matters most — per §14 it
+allows deriving every device's hotlist key. Rotate both values and rewrite
+history before any deployment that shares this repository.
+
+## Step 1 audit — confirmed defects and environment constraints *(added 2026-09-22)*
+
+> **PHASE 1 UPDATE (Step 2, 2026-09-22):** entries 51, 52, 53 below are
+> **RESOLVED** (backend-side fixes in `auth.py`, `deps.py`, `main.py`,
+> `api/sightings.py`, `schemas/sighting.py`); full suite now **131 passed /
+> 0 failed**. New entry 59 added for a behavior change introduced by the fix.
+> Entries 54–58 remain open.
+
+### 51. `api/auth.py` returns token shapes that no consumer expects
+
+register returns `{user, access_token}` (consumers expect `{user, tokens:{access_token, refresh_token, token_type}}`); login returns `{user, access_token}` (consumers expect top-level `{access_token, refresh_token, token_type}`); refresh reads the HttpOnly cookie only and returns `{access_token}` (consumers post `{refresh_token}` in the body and expect `{access_token, refresh_token}`). The cookie is `secure=True` with `path=/api/v1/auth`, which browsers will not store over `http://localhost` anyway. This is a **backend-only** defect — the tests and both frontends encode the correct contract — and will be fixed in `auth.py`.
+
+**RESOLVED (Phase 1):** register → `{user, tokens}`; login → top-level `{access_token, refresh_token, token_type}` + `user`; refresh accepts `{refresh_token}` body (cookie fallback) and returns both tokens. `test_auth.py` 7/7 green.
+
+### 52. `deps.py require_role` 403 returns an object `detail`
+
+`require_role` raises `HTTPException(detail={"error": {...}})`. Every consumer (tests, dashboard, mobile) expects the FastAPI default string `{"detail": "<string>"}`. Fix: return a string detail, keep the code.
+
+**RESOLVED (Phase 1):** string detail `Role '<role>' is not permitted. Required: [...]`; all `require_role` tests green.
+
+### 53. Sighting ingest fails with 500 (`reasons` type mismatch)
+
+`api/sightings.py` builds `reasons` as a list of string reason codes, but `SightingIngestResponse.reasons` is `list[dict]` → `ValidationError: reasons.0 Input should be a valid dictionary` → 500 on every ingest. Fix: emit `{"index": i, "reason": code}` items (no plate echo). This also explains the three `test_sightings.py` failures.
+
+**RESOLVED (Phase 1):** `_process_event_batch` now emits `{"index", "reason"}` dicts; `test_sightings.py` 8/8 and `test_privacy.py` 5/5 green.
+
+### 59. Sighting plates are no longer strictly pattern-validated at the request layer *(added 2026-09-22)*
+
+`SightingEvent.plate` previously carried `pattern=_PLATE_REGEX`, so raw OCR strings (e.g. `KA05ZZ432L`) received a 422 before normalisation could run — contradicting §6's "normalize plate server-side". The field now accepts any string ≤ 20 chars; `normalise_plate` + `is_valid_plate`/hotlist matching determine the outcome, and malformed plates drop as `plate_not_hotlisted` (200 with reason code, no echo). Devices and frontends must not rely on 422 as a format guard for individual events.
+
+### 54. No Docker / Alembic runtime on this host
+
+`docker compose up` and `alembic upgrade head` are impossible on this machine (no Docker Desktop, podman, nerdctl, or WSL distro). Backend verification uses a local `backend\.venv` with SQLite + FakeRedis. The MySQL-free, Postgres-targeted Alembic migrations (4 heads, raw PG enums/UUID/TIMESTAMPTZ/PostGIS) are **unexercised against real Postgres**. The Step 11 §8 composed acceptance test requires a Docker-capable host and is flagged BLOCKED in `docs/VERIFICATION_LOG.md`.
+
+### 55. Missing spec files (`HANDOFF.md`, `AGENT_BUILD_SPEC.md`)
+
+The previous audits cited an "AGENT BUILD & VERIFICATION SPEC §3" that is absent from the repository. The authoritative contract is `docs/PROJECT_INFO.md` only. Any file/phase claim traceable only to the missing spec was dropped from `docs/GAP_ANALYSIS.md` (rebuilt fresh this step).
+
+### 56. `services/matching.py`, `tests/test_matching.py`, `tests/test_dedup.py`, `data/samples/` missing
+
+Hotlist matching lives inline in `api/sightings.py` (`_find_active_hotlist`) with no dedicated matching tests; throttle/cluster logic has only indirect coverage; the simulator input `data/samples/` is absent (sources unreachable in this env). All four are noted in the GAP table.
+
+### 57. ~~Scheduler does not implement the full §10 retention policy~~ *(RESOLVED in Phase 5)*
+
+Implemented: rejected complaints > 30d purge, expired/closed hotlist > 180d after cooldown purge. Missing: **sightings > 90d purge (with photos)** and **audit logs retained for 1 year**. Planned for the retention phase.
+
+**RESOLVED (Phase 5, Step 6, 2026-09-22):** `services/scheduler.py` now implements the full §10 policy — `_purge_old_sightings` removes sighting rows older than 90 days **and** deletes their photo blobs (best-effort, never aborts the job), and `_purge_expired_audit_logs` removes `AuditLog` rows older than 1 year. `purge_old_data(db=None, storage=None)` is injectable for unit tests; `tests/test_retention.py` (4) covers every boundary plus the photo-deletion path. Full suite **142 passed / 0 failed**.
+
+### 58. ~~`InvalidStateTransition` is defined but never raised~~ *(RESOLVED in Phase 2)*
+
+`app/exceptions.py` defines it and `main.py` registers a 409 handler, but `services/verification.py` raised a bare `ValueError` for non-pending complaints, so the typed handler was dead code. Resolved 2026-09-22 (Step 3): `_ensure_pending_verification` raises `InvalidStateTransition(from_state, to_state)` for non-pending complaints, and `api/hotlist.py::_apply_status_update` now raises it instead of a hand-built 409 `HTTPException`. Verified by `test_reverify_verified_complaint_returns_409` plus the existing `test_hotlist.py` 409 suite.
+
+---
 
 ## Assumptions
 

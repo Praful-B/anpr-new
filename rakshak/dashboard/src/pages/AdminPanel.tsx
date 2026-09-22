@@ -90,15 +90,20 @@ export default function AdminPanel(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<Tab>("users");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [userTotal, setUserTotal] = useState(0);
+  const [userPage, setUserPage] = useState(1);
   const [roleFilter, setRoleFilter] = useState("");
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
   const [auditTotal, setAuditTotal] = useState(0);
+  const [auditPage, setAuditPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
 
   const loadUsers = useCallback(async (): Promise<void> => {
     try {
-      const params = new URLSearchParams({ page: "1", per_page: String(PAGE_SIZE) });
+      const params = new URLSearchParams({
+        page: String(userPage),
+        per_page: String(PAGE_SIZE),
+      });
       if (roleFilter) params.set("role", roleFilter);
       const data = (await apiRequest(`/admin/users?${params.toString()}`)) as PageResponse<AdminUser>;
       setUsers(data.items);
@@ -107,11 +112,14 @@ export default function AdminPanel(): React.JSX.Element {
       const message = err instanceof ApiError ? err.message : "Failed to load users.";
       addToast("Error", message, "error");
     }
-  }, [roleFilter, addToast]);
+  }, [userPage, roleFilter, addToast]);
 
   const loadAudit = useCallback(async (): Promise<void> => {
     try {
-      const params = new URLSearchParams({ page: "1", per_page: String(PAGE_SIZE) });
+      const params = new URLSearchParams({
+        page: String(auditPage),
+        per_page: String(PAGE_SIZE),
+      });
       const data = (await apiRequest(`/admin/audit?${params.toString()}`)) as PageResponse<AuditEntry>;
       setAuditEntries(data.items);
       setAuditTotal(data.total);
@@ -119,7 +127,7 @@ export default function AdminPanel(): React.JSX.Element {
       const message = err instanceof ApiError ? err.message : "Failed to load audit log.";
       addToast("Error", message, "error");
     }
-  }, [addToast]);
+  }, [auditPage, addToast]);
 
   useEffect(() => {
     const load = async (): Promise<void> => {
@@ -149,6 +157,9 @@ export default function AdminPanel(): React.JSX.Element {
     },
     [addToast, loadUsers, loadAudit],
   );
+
+  const userTotalPages = Math.max(1, Math.ceil(userTotal / PAGE_SIZE));
+  const auditTotalPages = Math.max(1, Math.ceil(auditTotal / PAGE_SIZE));
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -198,7 +209,10 @@ export default function AdminPanel(): React.JSX.Element {
             Filter by role
             <select
               value={roleFilter}
-              onChange={(event) => setRoleFilter(event.target.value)}
+              onChange={(event) => {
+                setRoleFilter(event.target.value);
+                setUserPage(1);
+              }}
               className="ml-2 rounded border border-gray-300 px-2 py-1"
             >
               <option value="">All</option>
@@ -254,6 +268,30 @@ export default function AdminPanel(): React.JSX.Element {
               ) : null}
             </tbody>
           </table>
+
+          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+            <span>
+              Page {userPage} of {userTotalPages} ({userTotal} users)
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={userPage <= 1}
+                onClick={() => setUserPage((page) => Math.max(1, page - 1))}
+                className="rounded border border-gray-300 bg-white px-3 py-1 disabled:opacity-40"
+              >
+                &larr; Prev
+              </button>
+              <button
+                type="button"
+                disabled={userPage >= userTotalPages}
+                onClick={() => setUserPage((page) => page + 1)}
+                className="rounded border border-gray-300 bg-white px-3 py-1 disabled:opacity-40"
+              >
+                Next &rarr;
+              </button>
+            </div>
+          </div>
         </section>
       ) : (
         <section>
@@ -290,6 +328,30 @@ export default function AdminPanel(): React.JSX.Element {
               ) : null}
             </tbody>
           </table>
+
+          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+            <span>
+              Page {auditPage} of {auditTotalPages} ({auditTotal} entries)
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={auditPage <= 1}
+                onClick={() => setAuditPage((page) => Math.max(1, page - 1))}
+                className="rounded border border-gray-300 bg-white px-3 py-1 disabled:opacity-40"
+              >
+                &larr; Prev
+              </button>
+              <button
+                type="button"
+                disabled={auditPage >= auditTotalPages}
+                onClick={() => setAuditPage((page) => page + 1)}
+                className="rounded border border-gray-300 bg-white px-3 py-1 disabled:opacity-40"
+              >
+                Next &rarr;
+              </button>
+            </div>
+          </div>
         </section>
       )}
     </div>

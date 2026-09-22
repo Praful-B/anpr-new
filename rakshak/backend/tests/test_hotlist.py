@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.models.complaint import Complaint, ComplaintStatus
 from app.models.hotlist import Hotlist, HotlistStatus, is_legal_transition
+from app.models.sighting import Sighting
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -276,6 +277,48 @@ async def test_detail_includes_complaint_and_sightings(
     assert body["complaint"] is not None
     assert body["complaint"]["plate"] == TEST_PLATE
     assert body["sightings"] == []
+
+
+@pytest.mark.asyncio
+async def test_detail_sightings_include_photo_url(
+    client: AsyncClient,
+    db_session: Session,
+    cop_headers: dict[str, str],
+    citizen_user,
+) -> None:
+    """The detail sightings expose ``photo_url`` for dashboard thumbnails.
+
+    Phase 7 hardening: closes the stored-but-never-rendered photo gap by
+    adding ``photo_url`` to the detail payload's sighting items.
+
+    Args:
+        client: Async HTTP test client.
+        db_session: Test database session.
+        cop_headers: Auth headers for a COP user.
+        citizen_user: The CITIZEN user fixture.
+
+    Raises:
+        AssertionError: If the field is missing from the detail payload.
+    """
+    entry = _create_hotlist_entry(db_session, citizen_user.id)
+    sighting = Sighting(
+        id=uuid.uuid4(),
+        hotlist_id=entry.id,
+        device_id=uuid.uuid4(),
+        lat=19.076,
+        lng=72.877,
+        captured_at=datetime.now(timezone.utc),
+        photo_url="/sightings/def456.jpg",
+        confidence=90,
+    )
+    db_session.add(sighting)
+    db_session.commit()
+
+    response = await client.get(f"/api/v1/hotlist/{entry.id}", headers=cop_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["sightings"]) == 1
+    assert body["sightings"][0]["photo_url"] == "/sightings/def456.jpg"
 
 
 @pytest.mark.asyncio

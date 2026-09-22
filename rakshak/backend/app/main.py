@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.exceptions import AppError, InvalidStateTransition, error_response
+from app.exceptions import AppError, InvalidStateTransition
 
 from app.api.auth import router as auth_router
 from app.api.complaints import router as complaints_router
@@ -132,18 +132,24 @@ app.add_middleware(
 
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    """Handle typed application errors with the standard error shape.
+    """Handle typed application errors with a string ``detail``.
+
+    The default FastAPI error body ``{"detail": "<string>"}`` is the
+    only shape any consumer (tests, dashboard, mobile) inspects, so the
+    handler returns that instead of a nested error envelope. The machine
+    code is logged for correlation.
 
     Args:
         request: The incoming HTTP request.
         exc: The application error.
 
     Returns:
-        JSONResponse: Standard error response with appropriate status code.
+        JSONResponse: ``{"detail": message}`` with the error's status code.
     """
+    logger.info("app_error", code=exc.code, path=request.url.path)
     return JSONResponse(
         status_code=exc.status_code,
-        content=error_response(exc.code, exc.message, exc.field),
+        content={"detail": exc.message},
     )
 
 
@@ -158,14 +164,13 @@ async def invalid_state_transition_handler(
         exc: The state transition error.
 
     Returns:
-        JSONResponse: 409 with INVALID_TRANSITION code.
+        JSONResponse: 409 with a string ``detail`` naming the transition.
     """
     return JSONResponse(
         status_code=409,
-        content=error_response(
-            "INVALID_TRANSITION",
-            f"Cannot transition from {exc.from_state} to {exc.to_state}",
-        ),
+        content={
+            "detail": f"Cannot transition from {exc.from_state} to {exc.to_state}"
+        },
     )
 
 
@@ -173,7 +178,7 @@ async def invalid_state_transition_handler(
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Catch-all handler for unhandled exceptions.
 
-    Returns the standard error shape with INTERNAL_ERROR code.
+    Returns ``{"detail": "An internal error occurred"}`` with status 500.
     Logs the full traceback via structlog but sanitises plate values
     and tokens for sightings/detect paths (privacy invariant).
 
@@ -182,7 +187,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         exc: The unhandled exception.
 
     Returns:
-        JSONResponse: 500 with INTERNAL_ERROR code.
+        JSONResponse: 500 with a string ``detail``.
     """
     sanitize = _is_sightings_or_detect_path(str(request.url))
     log_kwargs: dict = {"path": str(request.url.path)}
@@ -191,13 +196,19 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     logger.error("unhandled_exception", **log_kwargs)
     return JSONResponse(
         status_code=500,
-        content=error_response("INTERNAL_ERROR", "An internal error occurred"),
+        content={"detail": "An internal error occurred"},
     )
 
 
+@app.get("/healthz", include_in_schema=False)
 @app.get(f"{API_V1_PREFIX}/healthz")
 async def health_check() -> dict[str, str]:
     """Return service health status.
+
+    Registered on both ``/healthz`` and ``/api/v1/healthz``. The
+    unversioned path is probed by the container healthcheck, the ``make
+    up`` poller, and the demo scripts; the versioned path is the one
+    documented in the API reference.
 
     Returns:
         dict: A dictionary containing status and version.

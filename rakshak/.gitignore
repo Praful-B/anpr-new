@@ -7,6 +7,9 @@ dashboard/.env
 *.pem
 *.key
 
+# Demo credentials doc contains plaintext passwords — never commit it.
+docs/CREDENTIALS.md
+
 # Python
 __pycache__/
 *.py[cod]
@@ -32,3 +35,5 @@ data/uploads/
 .DS_Store
 *.swp
 *~
+backend/uvicorn.*.log 
+dashboard/vite-dev.*.log 
