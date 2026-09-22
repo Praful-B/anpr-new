@@ -2,7 +2,7 @@
 
 Provides the ``StorageBackend`` protocol with ``put``/``get``/``delete``
 methods, and a ``LocalFileSystemBackend`` implementation that writes files
-to ``config.STORAGE_LOCAL_PATH``. The factory function ``get_storage()``
+to ``config.UPLOAD_DIR``. The factory function ``get_storage()``
 selects the backend based on the ``STORAGE_BACKEND`` env var.
 """
 
@@ -78,7 +78,7 @@ class StorageBackend(ABC):
 class LocalFileSystemBackend(StorageBackend):
     """Storage backend that writes files to the local filesystem.
 
-    Files are stored under ``STORAGE_LOCAL_PATH/sightings/`` with
+    Files are stored under ``UPLOAD_DIR/sightings/`` with
     UUID-based filenames to avoid collisions.
     """
 
@@ -171,5 +171,5 @@ def get_storage() -> StorageBackend:
     """
     backend_type = settings.STORAGE_BACKEND.lower()
     if backend_type == "local":
-        return LocalFileSystemBackend(settings.STORAGE_LOCAL_PATH)
+        return LocalFileSystemBackend(settings.UPLOAD_DIR)
     raise ValueError(f"Unsupported storage backend: {backend_type}")

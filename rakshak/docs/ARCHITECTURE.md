@@ -121,7 +121,7 @@ Citizen submits FIR reference → `POST /complaints/{id}/fir`. COP verifies FIR 
 
 ### Flow F: Expiry and cooldown
 
-APScheduler runs every 5 minutes: `ACTIVE_UNCONFIRMED` entries past `fir_deadline` → status `EXPIRED`, `cooldown_until = now + 7 days`. Nightly job: purges rejected complaints > 30 days, expired/closed hotlist entries > 180 days past cooldown, sightings > 90 days.
+APScheduler runs every 5 minutes: `ACTIVE_UNCONFIRMED` entries past `fir_deadline` → status `EXPIRED`, `cooldown_until = now + 7 days`. Nightly job (§10): purges rejected complaints > 30 days, expired/closed hotlist entries > 180 days past cooldown, sightings > 90 days (rows **and** their photo blobs, best-effort), and audit logs > 1 year.
 
 ### Flow G: Recovery
 

@@ -143,6 +143,48 @@ def test_decrypt_wrong_key_raises_invalid_tag() -> None:
         decrypt_hotlist(iv_b64, ciphertext_b64, wrong_key)
 
 
+def test_decrypt_tampered_ciphertext_bit_flip_raises_invalid_tag() -> None:
+    """Flipping any ciphertext bit must make decryption fail with InvalidTag.
+
+    AES-GCM authenticates ciphertext, so a single modified byte must be
+    detected even when the key is correct.
+
+    Raises:
+        AssertionError: If tampered ciphertext decrypts without error.
+    """
+    plates = ["MH12AB1234", "DL01CD5678"]
+    key = os.urandom(32)
+
+    iv_b64, ciphertext_b64 = encrypt_hotlist(plates, key)
+    ciphertext = bytearray(base64.b64decode(ciphertext_b64))
+    ciphertext[0] ^= 0x01
+    tampered_ct = base64.b64encode(bytes(ciphertext)).decode("ascii")
+
+    with pytest.raises(InvalidTag):
+        decrypt_hotlist(iv_b64, tampered_ct, key)
+
+
+def test_decrypt_tampered_iv_bit_flip_raises_invalid_tag() -> None:
+    """Flipping any IV bit must make decryption fail with InvalidTag.
+
+    The GCM authentication tag is bound to the IV as well as the
+    ciphertext, so a modified IV must be detected.
+
+    Raises:
+        AssertionError: If tampered IV decrypts without error.
+    """
+    plates = ["MH12AB1234", "DL01CD5678"]
+    key = os.urandom(32)
+
+    iv_b64, ciphertext_b64 = encrypt_hotlist(plates, key)
+    iv = bytearray(base64.b64decode(iv_b64))
+    iv[0] ^= 0x01
+    tampered_iv = base64.b64encode(bytes(iv)).decode("ascii")
+
+    with pytest.raises(InvalidTag):
+        decrypt_hotlist(tampered_iv, ciphertext_b64, key)
+
+
 def test_encrypt_wrong_key_length_raises() -> None:
     """Encryption with a non-32-byte key must raise ValueError.
 

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.deps import get_current_device, get_db, require_role
+from app.exceptions import InvalidStateTransition
 from app.models.complaint import Complaint
 from app.models.device import Device
 from app.models.hotlist import Hotlist, HotlistStatus, is_legal_transition
@@ -241,6 +242,7 @@ def _recent_sightings(db: Session, entry_id: uuid.UUID) -> list[dict]:
                 sighting.captured_at.isoformat() if sighting.captured_at else None
             ),
             "confidence": sighting.confidence,
+            "photo_url": sighting.photo_url,
         }
         for sighting in sightings
     ]
@@ -254,8 +256,9 @@ def _apply_status_update(entry: Hotlist, raw_status: str) -> None:
         raw_status: The requested status string from the update payload.
 
     Raises:
-        HTTPException: 400 when the status is unknown, 409 when the
-            transition is not permitted from the entry's current status.
+        HTTPException: 400 when the status is unknown.
+        InvalidStateTransition: When the transition is not permitted from
+            the entry's current status.
     """
     new_status = _parse_status_filter(raw_status)
     if not is_legal_transition(entry.status, new_status):
@@ -265,13 +268,7 @@ def _apply_status_update(entry: Hotlist, raw_status: str) -> None:
             current_status=entry.status.value,
             requested_status=new_status.value,
         )
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"Illegal status transition: {entry.status.value} -> "
-                f"{new_status.value}"
-            ),
-        )
+        raise InvalidStateTransition(entry.status.value, new_status.value)
     entry.status = new_status
 
 

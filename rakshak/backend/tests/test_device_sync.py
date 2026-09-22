@@ -21,7 +21,7 @@ from app.models.complaint import Complaint, ComplaintStatus
 from app.models.device import Device, DeviceType
 from app.models.hotlist import Hotlist, HotlistStatus
 from app.models.user import Role, User
-from app.security import hash_password
+from app.security import hash_password, verify_password
 from app.services.crypto import decrypt_hotlist, derive_device_key
 
 # ---------------------------------------------------------------------------
@@ -281,6 +281,98 @@ async def test_register_device_fleet_type(
     assert response.status_code == 201
     body = response.json()
     assert body["device_id"]
+
+
+@pytest.mark.asyncio
+async def test_register_device_token_stored_hashed_not_plaintext(
+    client: AsyncClient,
+    db_session,
+    volunteer_headers: dict[str, str],
+) -> None:
+    """The raw device token is stored only as a bcrypt hash, never plaintext.
+
+    Also asserts the raw encryption key never appears in the wrapped
+    key material or any other device column.
+
+    Args:
+        client: Async HTTP test client.
+        db_session: Test database session.
+        volunteer_headers: Auth headers for VOLUNTEER user.
+
+    Raises:
+        AssertionError: If the token or key is stored in plaintext.
+    """
+    response = await client.post(
+        "/api/v1/devices/register",
+        json={"type": "VOLUNTEER"},
+        headers=volunteer_headers,
+    )
+    body = response.json()
+    raw_token = body["device_token"]
+    raw_key_b64 = body["encryption_key_b64"]
+
+    device = db_session.query(Device).filter(
+        Device.id == uuid.UUID(body["device_id"])
+    ).first()
+
+    assert device is not None
+    assert device.token_hash != raw_token
+    assert verify_password(raw_token, device.token_hash) is True
+    assert raw_token not in device.encryption_key_wrapped
+    assert raw_key_b64 not in device.encryption_key_wrapped
+
+
+@pytest.mark.asyncio
+async def test_register_returns_fresh_credentials_each_call(
+    client: AsyncClient,
+    volunteer_headers: dict[str, str],
+    admin_headers: dict[str, str],
+) -> None:
+    """Credentials are returned exactly once and never echoed later.
+
+    Each registration yields fresh device id, token, and key; the sync and
+    revoke responses must not re-issue or echo any of them.
+
+    Args:
+        client: Async HTTP test client.
+        volunteer_headers: Auth headers for VOLUNTEER user.
+        admin_headers: Auth headers for ADMIN user.
+
+    Raises:
+        AssertionError: If credentials are reused or leaked.
+    """
+    first = await client.post(
+        "/api/v1/devices/register",
+        json={"type": "VOLUNTEER"},
+        headers=volunteer_headers,
+    )
+    second = await client.post(
+        "/api/v1/devices/register",
+        json={"type": "VOLUNTEER"},
+        headers=volunteer_headers,
+    )
+    first_body = first.json()
+    second_body = second.json()
+
+    assert first_body["device_id"] != second_body["device_id"]
+    assert first_body["device_token"] != second_body["device_token"]
+    assert first_body["encryption_key_b64"] != second_body["encryption_key_b64"]
+
+    sync = await client.get(
+        "/api/v1/hotlist/sync",
+        headers={"X-Device-Token": first_body["device_token"]},
+    )
+    assert sync.status_code == 200
+    assert first_body["device_token"] not in sync.text
+    assert first_body["encryption_key_b64"] not in sync.text
+
+    revoke = await client.post(
+        f"/api/v1/devices/{first_body['device_id']}/revoke",
+        headers=admin_headers,
+    )
+    assert revoke.status_code == 200
+    assert first_body["device_token"] not in revoke.text
+    assert first_body["encryption_key_b64"] not in revoke.text
 
 
 # ---------------------------------------------------------------------------

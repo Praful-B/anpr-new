@@ -1,0 +1,111 @@
+2026-09-22 20:03:03 [info     ] notifier_event_loop_bound
+2026-09-22 20:03:03 [info     ] scheduler_configured           fir_expiry_interval=5 nightly_purge_hour=2
+2026-09-22 20:03:03 [info     ] rakshak_startup                scheduler_started=True version=0.1.0
+INFO:     127.0.0.1:64003 - "GET /healthz HTTP/1.1" 200 OK
+2026-09-22 20:03:19 [info     ] login_success                  user_id=2a87ce7d-5d88-4ea6-af5d-7635bc415bbc
+INFO:     127.0.0.1:64016 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64016 - "GET /api/v1/hotlist/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64016 - "GET /openapi.json HTTP/1.1" 200 OK
+2026-09-22 20:05:15 [info     ] notifier_event_loop_bound
+2026-09-22 20:05:15 [info     ] scheduler_configured           fir_expiry_interval=5 nightly_purge_hour=2
+2026-09-22 20:05:15 [info     ] rakshak_startup                scheduler_started=True version=0.1.0
+INFO:     127.0.0.1:51093 - "GET /api/v1/healthz HTTP/1.1" 200 OK
+2026-09-22 20:05:16 [info     ] login_failed                   email=citizen@example.com
+2026-09-22 20:05:16 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:51108 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+2026-09-22 20:05:16 [info     ] login_failed                   email=volunteer@example.com
+2026-09-22 20:05:16 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:51117 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51108 - "POST /api/v1/complaints HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51108 - "POST /api/v1/complaints/ HTTP/1.1" 401 Unauthorized
+2026-09-22 20:05:17 [info     ] login_failed                   email=cop@example.com
+2026-09-22 20:05:17 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:51108 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51108 - "GET /api/v1/complaints HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51108 - "GET /api/v1/complaints/ HTTP/1.1" 405 Method Not Allowed
+INFO:     127.0.0.1:51108 - "POST /api/v1/complaints//verify HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51108 - "GET /api/v1/hotlist HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51108 - "GET /api/v1/hotlist/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51117 - "POST /api/v1/devices/register HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:51117 - "POST /api/v1/sightings HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:51117 - "POST /api/v1/sightings/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54287 - "GET /api/v1/healthz HTTP/1.1" 200 OK
+2026-09-22 20:05:20 [info     ] login_failed                   email=cop@example.com
+2026-09-22 20:05:20 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:54301 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+2026-09-22 20:05:21 [info     ] login_failed                   email=volunteer@example.com
+2026-09-22 20:05:21 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:54301 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54301 - "POST /api/v1/devices/register HTTP/1.1" 401 Unauthorized
+2026-09-22 20:05:25 [info     ] login_failed                   email=cop@example.com
+2026-09-22 20:05:25 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:54327 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+2026-09-22 20:05:25 [info     ] login_failed                   email=volunteer@example.com
+2026-09-22 20:05:25 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:54327 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54327 - "POST /api/v1/devices/register HTTP/1.1" 401 Unauthorized
+2026-09-22 20:05:28 [info     ] login_failed                   email=cop@example.com
+2026-09-22 20:05:28 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:52946 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52946 - "GET /api/v1/vehicles/TS09AB1234/route HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52946 - "GET /api/v1/vehicles/TS09AB1234 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52946 - "GET /api/v1/alerts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52946 - "GET /api/v1/analytics/overview HTTP/1.1" 401 Unauthorized
+2026-09-22 20:05:29 [info     ] login_failed                   email=cop@example.com
+2026-09-22 20:05:29 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:52951 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52951 - "GET /api/v1/alerts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52951 - "GET /api/v1/vehicles/TS09AB1234 HTTP/1.1" 404 Not Found
+2026-09-22 20:05:33 [info     ] login_failed                   email=volunteer@example.com
+2026-09-22 20:05:33 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:52975 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52975 - "POST /api/v1/devices/register HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52975 - "POST /api/v1/sightings HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52975 - "POST /api/v1/sightings/ HTTP/1.1" 401 Unauthorized
+2026-09-22 20:05:33 [info     ] login_failed                   email=cop@example.com
+2026-09-22 20:05:33 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:52975 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52975 - "GET /api/v1/alerts HTTP/1.1" 404 Not Found
+2026-09-22 20:05:38 [info     ] login_failed                   email=volunteer@example.com
+2026-09-22 20:05:38 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:52340 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52340 - "POST /api/v1/devices/register HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52343 - "GET /healthz HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52340 - "POST /api/v1/sightings HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52340 - "POST /api/v1/sightings/ HTTP/1.1" 401 Unauthorized
+2026-09-22 20:05:57 [info     ] login_success                  user_id=2a87ce7d-5d88-4ea6-af5d-7635bc415bbc
+INFO:     127.0.0.1:55826 - "POST /api/v1/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55826 - "GET /api/v1/hotlist/ HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55826 - "GET /openapi.json HTTP/1.1" 200 OK
+2026-09-22 20:06:07 [info     ] login_failed                   email=citizen@example.com
+2026-09-22 20:06:07 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:55095 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55095 - "GET /api/v1/hotlist HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:55095 - "GET /api/v1/hotlist/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55095 - "GET /api/v1/complaints HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:55095 - "GET /api/v1/complaints/ HTTP/1.1" 405 Method Not Allowed
+2026-09-22 20:06:07 [info     ] login_failed                   email=cop@example.com
+2026-09-22 20:06:07 [info     ] app_error                      code=INVALID_CREDENTIALS path=/api/v1/auth/login
+INFO:     127.0.0.1:55095 - "POST /api/v1/auth/login HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55095 - "GET /api/v1/healthz HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55106 - "GET /api/v1/healthz HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61220 - "POST /api/v1/sightings HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:61220 - "POST /api/v1/sightings/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61224 - "POST /api/v1/sightings HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:61224 - "POST /api/v1/sightings/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52361 - "POST /api/v1/sightings HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52361 - "POST /api/v1/sightings/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52366 - "POST /api/v1/sightings HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:52366 - "POST /api/v1/sightings/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61888 - "GET /api/v1/healthz HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49201 - "GET /api/v1/healthz HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64865 - "POST /api/v1/sightings HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:64865 - "POST /api/v1/sightings/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64865 - "GET /api/v1/vehicles/TS09AB1234/route HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64865 - "GET /api/v1/alerts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64865 - "GET /api/v1/analytics/overview HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64881 - "POST /api/v1/sightings HTTP/1.1" 307 Temporary Redirect
+INFO:     127.0.0.1:64881 - "POST /api/v1/sightings/ HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64881 - "GET /api/v1/vehicles/TS09AB1234/route HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64881 - "GET /api/v1/alerts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64881 - "GET /api/v1/analytics/overview HTTP/1.1" 401 Unauthorized

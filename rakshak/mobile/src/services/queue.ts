@@ -46,8 +46,8 @@ interface IngestResponse {
   accepted: number;
   /** Number of events dropped. */
   dropped: number;
-  /** Machine-readable drop reasons (never contains plate strings). */
-  reasons: string[];
+  /** Drop outcomes, one per rejected event (never contains plate strings). */
+  reasons: { index: number; reason: string }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -237,6 +237,24 @@ async function flushSingleEvent(
 }
 
 /**
+ * Classify a batch ingest response into a single-event delivery status.
+ *
+ * @param accepted - Number of accepted events in the batch.
+ * @param reasons  - Drop outcomes, one per rejected event.
+ * @returns The delivery status for the scanner UI.
+ */
+export function classifyDelivery(
+  accepted: number,
+  reasons: { index: number; reason: string }[]
+): Exclude<HitDeliveryStatus, "sending" | "queued"> {
+  if (accepted > 0) return "sent";
+  if (reasons.some((item) => item.reason === REASON_THROTTLED)) {
+    return "throttled";
+  }
+  return "rejected";
+}
+
+/**
  * POST one hit event and classify the outcome.
  *
  * @param row         - The queued event to send.
@@ -264,13 +282,7 @@ async function postHit(
       }),
     })) as IngestResponse;
 
-    if (response.accepted > 0) {
-      return "sent";
-    }
-    if (response.reasons.includes(REASON_THROTTLED)) {
-      return "throttled";
-    }
-    return "rejected";
+    return classifyDelivery(response.accepted, response.reasons);
   } catch (err) {
     if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
       return "rejected";

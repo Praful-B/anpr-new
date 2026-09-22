@@ -17,6 +17,15 @@ class InvalidStateTransition(Exception):
     """
 
     def __init__(self, from_state: str, to_state: str) -> None:
+        """Record the rejected transition and build its message.
+
+        Args:
+            from_state: The current state of the entry.
+            to_state: The requested target state.
+
+        Returns:
+            None.
+        """
         self.from_state = from_state
         self.to_state = to_state
         super().__init__(
@@ -41,6 +50,17 @@ class AppError(Exception):
         field: str | None = None,
         status_code: int = 400,
     ) -> None:
+        """Store the machine code, message, field, and status code.
+
+        Args:
+            code: Machine-readable error code (e.g. ``EMAIL_TAKEN``).
+            message: Human-readable error description.
+            field: Name of the offending field for validation errors.
+            status_code: HTTP status code to return (default 400).
+
+        Returns:
+            None.
+        """
         self.code = code
         self.message = message
         self.field = field

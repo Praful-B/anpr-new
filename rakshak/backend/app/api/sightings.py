@@ -194,7 +194,7 @@ def _process_event_batch(
     db: Session,
     r: redis.Redis,
     storage: StorageBackend,
-) -> tuple[int, int, list[str], list[dict]]:
+) -> tuple[int, int, list[dict], list[dict]]:
     """Process every event in an ingestion batch.
 
     Args:
@@ -205,16 +205,16 @@ def _process_event_batch(
         storage: Storage backend instance.
 
     Returns:
-        tuple[int, int, list[str], list[dict]]: Accepted count, dropped
-        count, the reason code for each dropped event, and the dashboard
-        notification payloads for the accepted ones.
+        tuple[int, int, list[dict], list[dict]]: Accepted count, dropped
+        count, one ``{"index", "reason"}`` entry per dropped event, and the
+        dashboard notification payloads for the accepted ones.
     """
     accepted = 0
     dropped = 0
-    reasons: list[str] = []
+    reasons: list[dict] = []
     notifications: list[dict] = []
 
-    for event in payload.events:
+    for index, event in enumerate(payload.events):
         result, reason, notification = _process_single_event(
             event=event,
             current_device=current_device,
@@ -224,7 +224,7 @@ def _process_event_batch(
         )
         if result is None:
             dropped += 1
-            reasons.append(reason)
+            reasons.append({"index": index, "reason": reason})
             continue
         accepted += 1
         if notification is not None:
@@ -349,7 +349,10 @@ def _process_single_event(
     if captured_at is None:
         return None, REASON_TIMESTAMP_INVALID, None
 
-    normalised_plate = normalise_plate(event.plate)
+    try:
+        normalised_plate = normalise_plate(event.plate)
+    except ValueError:
+        return None, REASON_PLATE_NOT_HOTLISTED, None
     hotlist_entry = _find_active_hotlist(db, normalised_plate)
     if hotlist_entry is None:
         return None, REASON_PLATE_NOT_HOTLISTED, None

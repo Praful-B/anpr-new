@@ -84,6 +84,7 @@ interface SightingInfo {
   readonly lng: number;
   readonly captured_at: string;
   readonly confidence: number;
+  readonly photo_url: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +344,7 @@ export default function PoliceVehicleDetail(): React.JSX.Element {
               lng: (sighting.lng as number) ?? 0,
               captured_at: (sighting.captured_at as string) ?? new Date().toISOString(),
               confidence: (sighting.confidence as number) ?? 0,
+              photo_url: (sighting.photo_url as string) ?? null,
             };
             const updatedSightings = [newSighting, ...prev.sightings].slice(0, 50);
             return {
@@ -568,6 +570,9 @@ export default function PoliceVehicleDetail(): React.JSX.Element {
                   <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
                     Confidence
                   </th>
+                  <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    Photo
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -584,6 +589,25 @@ export default function PoliceVehicleDetail(): React.JSX.Element {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
                       {sighting.confidence}%
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      {sighting.photo_url ? (
+                        <a
+                          href={sighting.photo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`View photo for sighting ${index + 1}`}
+                        >
+                          <img
+                            src={sighting.photo_url}
+                            alt={`Sighting ${index + 1} capture`}
+                            loading="lazy"
+                            className="h-12 w-16 rounded border border-gray-200 object-cover"
+                          />
+                        </a>
+                      ) : (
+                        <span className="text-sm text-gray-400">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -153,8 +153,8 @@ def require_role(
             their role is among ``allowed_roles``.
 
     Raises:
-        HTTPException: 403 with code ``ROLE_NOT_ALLOWED`` if the user's
-            role is not permitted.
+        HTTPException: 403 with a string ``detail`` naming the current role
+            and the set of roles that are permitted.
     """
 
     def _check_role(
@@ -174,13 +174,10 @@ def require_role(
         if current_user.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "error": {
-                        "code": "ROLE_NOT_ALLOWED",
-                        "message": f"Role '{current_user.role.value}' is not permitted. Required: {[r.value for r in allowed_roles]}",
-                        "field": None,
-                    }
-                },
+                detail=(
+                    f"Role '{current_user.role.value}' is not permitted. "
+                    f"Required: {[r.value for r in allowed_roles]}"
+                ),
             )
         return current_user
 

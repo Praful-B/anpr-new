@@ -63,7 +63,9 @@ Authentication: `Authorization: Bearer <jwt_access_token>` header (except auth e
 }
 ```
 
-**Response:** `200 OK` — Same `TokenResponse` structure as register. Refresh token also set as `rakshak_refresh` HttpOnly cookie.
+**Response:** `200 OK` — Top-level `TokenResponse` fields (`access_token`,
+`refresh_token`, `token_type`) plus `user` — not nested under a `tokens` key
+as in register. Refresh token also set as `rakshak_refresh` HttpOnly cookie.
 
 **Errors:** `401 Unauthorized`
 
@@ -310,10 +312,12 @@ Soft-delete: sets status to `CLOSED`.
 }
 ```
 
-`reasons` holds one **reason code per dropped event** — `timestamp_out_of_tolerance`,
-`plate_not_hotlisted`, or `throttled`. The submitted plate is never echoed back,
-logged, or stored when it does not match an active hotlist entry (privacy
-invariant §2).
+`reasons` holds one **`{index, reason}` object per dropped event** — `index`
+is the event's zero-based position in the submitted `events` array, and
+`reason` is one of `timestamp_out_of_tolerance`, `plate_not_hotlisted`, or
+`throttled`, e.g. `[{"index": 0, "reason": "plate_not_hotlisted"}]`. The
+submitted plate is never echoed back, logged, or stored when it does not match
+an active hotlist entry (privacy invariant §2).
 
 **Processing per event:**
 1. Timestamp validation (must be within ±10 minutes of server time)
