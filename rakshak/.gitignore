@@ -1,0 +1,34 @@
+# Local environment — copy .env.example instead.
+.env
+mobile/.env
+dashboard/.env
+
+# Secrets / certificates
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+*.db
+.venv/
+venv/
+
+# Node
+node_modules/
+dashboard/dist/
+mobile/.expo/
+mobile/dist/
+
+# Device simulator artefacts
+device_simulator_queue.db
+yolo11n.pt
+data/samples/*.mp4
+data/uploads/
+
+# OS / editor noise
+.DS_Store
+*.swp
+*~

@@ -1,0 +1,1 @@
+"""RAKSHAK backend application package."""

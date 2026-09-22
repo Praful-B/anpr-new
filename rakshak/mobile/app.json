@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "RAKSHAK",
+    "slug": "rakshak-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1a2e"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rakshak.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "RAKSHAK needs camera access to scan vehicle licence plates for stolen vehicle detection.",
+        "NSLocationWhenInUseUsageDescription": "RAKSHAK needs location to record where a vehicle was sighted."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1a2e"
+      },
+      "package": "com.rakshak.mobile",
+      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "RAKSHAK needs camera access to scan vehicle licence plates for stolen vehicle detection."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "RAKSHAK needs location to record where a vehicle was sighted."
+        }
+      ]
+    ]
+  }
+}

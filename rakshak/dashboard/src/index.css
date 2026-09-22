@@ -1,0 +1,8 @@
+/**
+ * @module index
+ * Global stylesheet — imports TailwindCSS base, components, and utilities.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

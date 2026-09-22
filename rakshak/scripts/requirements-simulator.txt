@@ -1,0 +1,10 @@
+# Host-side dependencies for scripts/device_simulator.py.
+# The simulator runs outside docker-compose (see PROJECT_INFO.md §12.16)
+# because it loads the YOLO and EasyOCR models locally.
+# Use --extra-index-url for CPU-only torch to avoid huge CUDA downloads.
+opencv-python==4.10.0.84
+numpy>=2.1.3
+requests==2.32.3
+structlog==25.4.0
+ultralytics==8.3.40
+easyocr==1.7.1
